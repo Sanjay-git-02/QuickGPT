@@ -2,21 +2,59 @@ import React, { useEffect, useRef, useState } from "react";
 import { UseAppContext } from "../context/Context";
 import { assets } from "../assets/assets";
 import Message from "./Message";
+import toast from "react-hot-toast";
 
 const Chatbox = () => {
-  const { selectedChat, theme } = UseAppContext();
+  const { selectedChat, theme, user, axios, token, setUser } = UseAppContext();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [prompt,setPrompt] = useState("")
-  const [mode,setMode] = useState('text')
-  const [isPublished,setIsPublished] = useState(false)
+  const [prompt, setPrompt] = useState("");
+  const [mode, setMode] = useState("text");
+  const [isPublished, setIsPublished] = useState(false);
 
-  const containerRef = useRef(null)
+  const containerRef = useRef(null);
 
-  const handlesubmit = async(e)=>{
-    e.preventDefault()
-  }
+  const handlesubmit = async (e) => {
+    try {
+      e.preventDefault();
+      if (!user) return toast("Login to send message");
+      setLoading(true);
+      const promptCopy = prompt;
+      setPrompt("");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          content: prompt,
+          timestamp: Date.now(),
+          isImage: false,
+        },
+      ]);
+
+      const { data } = await axios.post(`/api/message/${mode}`, {
+        chatId: selectedChat._id,
+        prompt,
+        isPublished,
+      });
+
+      if (data.success) {
+        setMessages((prev) => [...prev, data.reply]);
+        if (mode === "image") {
+          setUser((prev) => ({ ...prev, credits: prev.credits - 2 }));
+        } else {
+          setUser((prev) => ({ ...prev, credits: prev.credits - 1 }));
+        }
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setPrompt("");
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedChat) {
@@ -26,14 +64,14 @@ const Chatbox = () => {
     }
   }, [selectedChat]);
 
-  useEffect(()=>{
-    if(containerRef.current){
+  useEffect(() => {
+    if (containerRef.current) {
       containerRef.current.scrollTo({
-        top:containerRef.current.scrollHeight,
-        behaviour:"smooth"
-      })
+        top: containerRef.current.scrollHeight,
+        behaviour: "smooth",
+      });
     }
-  },[messages])
+  }, [messages]);
 
   return (
     <div className="flex-1 flex flex-col justify-center m-5 md:m-10 xl:mx-30 max-md:mt-14 2xl:pr-40">
@@ -66,19 +104,42 @@ const Chatbox = () => {
         {mode === "image" && (
           <label className="inline-flex items-center gap-2 mb-3 text-sm mx-auto">
             <p className="text-xs">Publish the Generated Image to Community</p>
-            <input onChange={(e)=>setIsPublished(e.target.checked)} type="checkbox" checked={isPublished} />
+            <input
+              onChange={(e) => setIsPublished(e.target.checked)}
+              type="checkbox"
+              checked={isPublished}
+            />
           </label>
         )}
 
         {/*Prompt form */}
-        <form onSubmit={handlesubmit} className="bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F] p-3 pl-4 flex items-center mx-auto rounded-full w-full max-w-2xl gap-4">
-          <select onChange={(e)=>setMode(e.target.value)} className="text-sm pl-3 pr-2 outline-0">
-            <option value="text" className="dark:bg-purple-400">Text</option>
-            <option value="image" className="dark:bg-purple-400">Image</option>
+        <form
+          onSubmit={handlesubmit}
+          className="bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F] p-3 pl-4 flex items-center mx-auto rounded-full w-full max-w-2xl gap-4"
+        >
+          <select
+            onChange={(e) => setMode(e.target.value)}
+            className="text-sm pl-3 pr-2 outline-0"
+          >
+            <option value="text" className="dark:bg-purple-400">
+              Text
+            </option>
+            <option value="image" className="dark:bg-purple-400">
+              Image
+            </option>
           </select>
-          <input onChange={(e)=>setPrompt(e.target.value)} type="text" placeholder="Enter the Prompt..." className="flex-1 w-full text-sm outline-0"/>
+          <input
+            onChange={(e) => setPrompt(e.target.value)}
+            type="text"
+            placeholder="Enter the Prompt..."
+            className="flex-1 w-full text-sm outline-0"
+          />
           <button disabled={loading}>
-            <img src={loading ? assets.stop_icon : assets.send_icon} alt="" className="w-8 cursor-pointer"/>
+            <img
+              src={loading ? assets.stop_icon : assets.send_icon}
+              alt=""
+              className="w-8 cursor-pointer"
+            />
           </button>
         </form>
       </div>

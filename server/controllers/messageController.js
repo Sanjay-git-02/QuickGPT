@@ -7,6 +7,7 @@ import OpenAI from "openai";
 import openai from "../configs/openai.js";
 import stability from "../configs/stabilityai.js";
 import { Chat } from "openai/resources/index.mjs";
+import { generateUnlimitedFreeImage } from "../utils/freeImageGenerator.js";
 
 const HF_IMAGE_MODEL =
   "https://api-inference.huggingface.co/models/stabilityai/sdxl-turbo";
@@ -102,18 +103,21 @@ export const imageMessageController = async (req, res) => {
     const encodedPrompt = encodeURIComponent(prompt);
     const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${Date.now()}`;
 
-    const imageResponse = await axios.get(imageUrl, {
-      responseType: "arraybuffer",
-      timeout: 60000,
-    });
+    // Use the multi-source free image generator util which tries several providers
+    let uploadResponse;
+    try {
+      const base64Image = await generateUnlimitedFreeImage(prompt);
+      if (!base64Image) throw new Error('All image providers failed');
 
-    const base64Image = Buffer.from(imageResponse.data).toString("base64");
-
-    const uploadResponse = await imagekit.upload({
-      file: `data:image/png;base64,${base64Image}`,
-      fileName: `img_${Date.now()}.png`,
-      folder: "quickgpt",
-    });
+      uploadResponse = await imagekit.upload({
+        file: `data:image/png;base64,${base64Image}`,
+        fileName: `img_${Date.now()}.png`,
+        folder: 'quickgpt',
+      });
+    } catch (err) {
+      console.error('Image generation/upload failed:', err);
+      throw err;
+    }
 
     const reply = {
       role: "assistant",
@@ -129,9 +133,13 @@ export const imageMessageController = async (req, res) => {
     return res.json({ success: true, reply });
 
   } catch (error) {
-    console.error("Image Error:", error.message);
+    console.error("Image Error:", error);
 
-    await userModel.updateOne({ _id: userId }, { $inc: { credits: 2 } });
+    try {
+      await userModel.updateOne({ _id: userId }, { $inc: { credits: 2 } });
+    } catch (uErr) {
+      console.error('Failed to refund credits after image error:', uErr);
+    }
 
     return res.json({
       success: false,

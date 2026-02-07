@@ -13,11 +13,15 @@ const app = express()
 await connectDB()
 
 //Stripe Webhooks
-app.post('/api/stripe',express.raw({type:'application/json'},stripeWebHooks))
+app.post(
+  "/api/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebHooks
+);
 
 //Middleware
-app.use(cors())
 app.use(express.json())
+app.use(cors())
 
 //Routes
 

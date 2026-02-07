@@ -2,12 +2,48 @@ import React, { useState } from "react";
 import { assets } from "../assets/assets";
 import { UseAppContext } from "../context/Context";
 import moment from "moment";
+import toast from "react-hot-toast";
 
 const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
-  const { chats, setChats, setSelectedChat, theme, setTheme, user, navigate, selectedChat } = UseAppContext();
+  const {
+    chats,
+    setChats,
+    setSelectedChat,
+    theme,
+    setTheme,
+    user,
+    navigate,
+    selectedChat,
+    createNewChat,
+    axios,
+    fetchUserChats,
+    setToken,
+    token,
+  } = UseAppContext();
   const [search, setSearch] = useState("");
 
+  const logout = () => {
+    localStorage.removeItem("token");
+    setToken(null);
+    navigate("/login");
+    toast.success("Logged out successfully");
+  };
 
+  const deleteChat = async (e, chatId) => {
+    try {
+      e.stopPropagation;
+      const confirm = window.confirm("Are you sure want to delete this chat?");
+      if (!confirm) return;
+      const { data } = await axios.post("/api/chat/delete", { chatId });
+      if (data.success) {
+        setChats((prev) => prev.filter((chat) => chat._id !== chatId));
+        await fetchUserChats();
+        toast.success(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
 
   return (
     <div
@@ -25,16 +61,18 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
       {/* New Chat */}
       <button
         className="flex justify-center items-center w-full py-2 mt-10 text-white bg-linear-to-r from-[#A456F7] to-[#3D81F6] rounded-md text-sm cursor-pointer"
-        onClick={() => {
-          // Add new chat logic here if needed
-        }}
+        onClick={createNewChat}
       >
         <span className="mr-2 text-3xl">+</span>New Chat
       </button>
 
       {/* Search */}
       <div className="flex items-center mt-5 gap-2 border border-gray-400 p-3 dark:border-white/20 rounded-md">
-        <img src={assets.search_icon} alt="search" className="w-4 not-dark:invert" />
+        <img
+          src={assets.search_icon}
+          alt="search"
+          className="w-4 not-dark:invert"
+        />
         <input
           onChange={(e) => setSearch(e.target.value)}
           value={search}
@@ -50,8 +88,10 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
         {chats
           .filter((chat) =>
             chat.messages?.[0]
-              ? chat.messages[0].content.toLowerCase().includes(search.toLowerCase())
-              : chat.name.toLowerCase().includes(search.toLowerCase())
+              ? chat.messages[0].content
+                  .toLowerCase()
+                  .includes(search.toLowerCase())
+              : chat.name.toLowerCase().includes(search.toLowerCase()),
           )
           .map((chat) => (
             <div
@@ -62,7 +102,9 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
                 setIsMenuOpen(false);
               }}
               className={`p-2 px-4 dark:bg-[#57317C]/10 border border-gray-300 dark:border-[#80609F]/15 rounded-md cursor-pointer flex justify-between group ${
-                selectedChat?._id === chat._id ? "bg-gray-200 dark:bg-[#57317C]/30" : ""
+                selectedChat?._id === chat._id
+                  ? "bg-gray-200 dark:bg-[#57317C]/30"
+                  : ""
               }`}
             >
               <div>
@@ -79,13 +121,11 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
                 src={assets.bin_icon}
                 alt="delete chat"
                 className="hidden group-hover:block w-4 cursor-pointer not-dark:invert"
-                onClick={(e) => {
-                  e.stopPropagation(); // prevent selecting chat
-                  setChats((prevChats) => prevChats.filter((c) => c._id !== chat._id));
-                  if (selectedChat?._id === chat._id) {
-                    setSelectedChat(null);
-                  }
-                }}
+                onClick={(e) =>
+                  toast.promise(deleteChat(e, chat._id), {
+                    loading: "deleting...",
+                  })
+                }
               />
             </div>
           ))}
@@ -99,7 +139,11 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
         }}
         className="flex items-center gap-2 p-3 mt-6 border border-gray-300 rounded-md cursor-pointer dark:border-white/15 hover:scale-105 transition-all"
       >
-        <img src={assets.gallery_icon} alt="gallery" className="w-4.5 not-dark:invert" />
+        <img
+          src={assets.gallery_icon}
+          alt="gallery"
+          className="w-4.5 not-dark:invert"
+        />
         <div className="flex flex-col text-sm">
           <p>Community Images</p>
         </div>
@@ -113,17 +157,27 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
         }}
         className="flex items-center gap-2 p-3 mt-4 border border-gray-300 rounded-md cursor-pointer dark:border-white/15 hover:scale-105 transition-all"
       >
-        <img src={assets.diamond_icon} alt="credits" className="w-4.5 dark:invert" />
+        <img
+          src={assets.diamond_icon}
+          alt="credits"
+          className="w-4.5 dark:invert"
+        />
         <div className="flex flex-col text-sm">
           <p>Credits: {user?.credits}</p>
-          <p className="text-xs text-gray-400">Purchase credits to use QuickGPT</p>
+          <p className="text-xs text-gray-400">
+            Purchase credits to use QuickGPT
+          </p>
         </div>
       </div>
 
       {/* Dark Mode Toggle */}
       <div className="flex items-center justify-between gap-2 p-3 mt-4 border border-gray-300 rounded-md cursor-pointer dark:border-white/15">
         <div className="flex text-sm gap-2 items-center">
-          <img src={assets.theme_icon} alt="theme" className="w-4 not-dark:invert" />
+          <img
+            src={assets.theme_icon}
+            alt="theme"
+            className="w-4 not-dark:invert"
+          />
           <p>Dark Mode</p>
         </div>
         <label className="relative inline-flex cursor-pointer">
@@ -144,7 +198,11 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
         className="flex items-center justify-between gap-2 p-3 mt-4 border border-gray-300 rounded-md cursor-pointer dark:border-white/15 group"
       >
         <div className="flex items-center gap-2">
-          <img src={assets.user_icon} alt="user" className="w-4.5 not-dark:invert" />
+          <img
+            src={assets.user_icon}
+            alt="user"
+            className="w-4.5 not-dark:invert"
+          />
           <p className="text-sm flex dark:text-primary truncate">
             {user ? user.name : "Login your Account"}
           </p>
@@ -155,12 +213,7 @@ const Sidebar = ({ isMenuOpen, setIsMenuOpen }) => {
             src={assets.logout_icon}
             alt="logout"
             className="h-5 cursor-pointer hidden not-dark:invert group-hover:block"
-            onClick={(e) => {
-              e.stopPropagation();
-              setChats([]);
-              setSelectedChat(null);
-              navigate("/login");
-            }}
+            onClick={logout}
           />
         )}
       </div>
