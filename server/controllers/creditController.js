@@ -1,4 +1,5 @@
 import Transaction from "../models/transaction.js";
+import userModel from "../models/user.js";
 import Stripe from "stripe";
 
 const plans = [
@@ -89,7 +90,7 @@ export const purchasePlan = async (req, res) => {
         },
       ],
 
-      success_url: `${origin}/loading`,
+      success_url: `${origin}/loading?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}`,
 
       metadata: {
@@ -100,7 +101,58 @@ export const purchasePlan = async (req, res) => {
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     });
 
-    return res.json({ success: true, url: session.url });
+    return res.json({ success: true, url: session.url, sessionId: session.id });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+// Endpoint to complete a checkout session (can be called after Stripe redirect)
+export const completePurchase = async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    if (!session_id) return res.status(400).json({ success: false, message: 'Missing session_id' });
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+
+    const { transactionId, appId } = session.metadata || {};
+    if (appId !== 'quickgpt') return res.json({ success: false, message: 'Invalid app' });
+
+    const transaction = await Transaction.findOne({ _id: transactionId, isPaid: false });
+    if (!transaction) return res.json({ success: false, message: 'Transaction not found or already processed' });
+
+    await userModel.updateOne({ _id: transaction.userId }, { $inc: { credits: transaction.credits } });
+    transaction.isPaid = true;
+    await transaction.save();
+
+    return res.json({ success: true, message: 'Purchase completed' });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+// Dev helper: simulate a successful purchase without contacting Stripe
+export const simulatePurchase = async (req, res) => {
+  try {
+    const { planId } = req.body;
+    const userId = req.user._id;
+
+    const plan = plans.find((p) => p._id === planId);
+    if (!plan) return res.json({ success: false, message: "Invalid Plan" });
+
+    const transaction = await Transaction.create({
+      userId,
+      planId: plan._id,
+      amount: plan.price,
+      credits: plan.credits,
+      isPaid: true,
+    });
+
+    await userModel.updateOne({ _id: userId }, { $inc: { credits: plan.credits } });
+
+    return res.json({ success: true, message: "Simulated purchase completed", transaction });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }

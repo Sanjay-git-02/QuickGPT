@@ -3,10 +3,8 @@ import gemini from "../configs/gemini.js";
 import chatModel from "../models/chat.js";
 import imagekit from "../configs/imagekit.js";
 import userModel from "../models/user.js";
-import OpenAI from "openai";
 import openai from "../configs/openai.js";
 import stability from "../configs/stabilityai.js";
-import { Chat } from "openai/resources/index.mjs";
 import { generateUnlimitedFreeImage } from "../utils/freeImageGenerator.js";
 
 const HF_IMAGE_MODEL =
@@ -37,20 +35,34 @@ export const textMessageController = async (req, res) => {
       isImage: false,
     });
 
-    const response = await gemini.chat.completions.create({
-      model: "gemini-3-flash-preview",
-      messages: [{ role: "user", content: prompt }],
-    });
+    let reply;
+    if (gemini) {
+      const response = await gemini.chat.completions.create({
+        model: "gemini-3-flash-preview",
+        messages: [{ role: "user", content: prompt }],
+      });
 
-    if (!response.choices?.length) {
-      return res.json({ success: false, message: "AI returned no response" });
+      if (!response.choices?.length) {
+        return res.json({ success: false, message: "AI returned no response" });
+      }
+
+      reply = {
+        ...response.choices[0].message,
+        timestamp: Date.now(),
+        isImage: false,
+      };
+    } else if (openai) {
+      // Fallback to a basic OpenAI completion if configured
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const messageText = completion?.choices?.[0]?.message?.content || 'No reply';
+      reply = { role: 'assistant', content: messageText, timestamp: Date.now(), isImage: false };
+    } else {
+      // Last-resort fallback: echo the user's prompt
+      reply = { role: 'assistant', content: `Echo: ${prompt}`, timestamp: Date.now(), isImage: false };
     }
-
-    const reply = {
-      ...response.choices[0].message,
-      timestamp: Date.now(),
-      isImage: false,
-    };
 
     chat.messages.push(reply);
     await chat.save();

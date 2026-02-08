@@ -9,7 +9,17 @@ const Loading = () => {
   const { fetchUser} = UseAppContext();
 
   useEffect(()=>{
-    const timeout = setTimeout(()=>{
+    const timeout = setTimeout(async ()=>{
+      // If redirected from Stripe, complete the purchase first
+      const params = new URLSearchParams(window.location.search);
+      const session_id = params.get('session_id');
+      if (session_id) {
+        try {
+          await fetch(`/api/credits/complete?session_id=${session_id}`, { method: 'GET', headers: { 'Authorization': localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : '' } });
+        } catch (e) {
+          // ignore
+        }
+      }
       fetchUser();
       navigate("/")
     },4000)

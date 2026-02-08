@@ -98,6 +98,7 @@ export const AppContextProvider = ({ children }) => {
     () => ({
       user,
       setUser,
+      fetchUser,
       chats,
       setChats,
       selectedChat,
