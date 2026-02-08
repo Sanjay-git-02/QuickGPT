@@ -106,14 +106,16 @@ const Chatbox = () => {
         {/* Publish checkbox centered above the prompt when in image mode */}
         {mode === "image" && (
           <div className="w-full flex justify-center mb-3">
-            <label className="inline-flex flex-col items-center gap-2 text-sm">
+            <label className="inline-flex justify-center items-center gap-2 text-sm">
+              <span className="text-xs mt-1">
+                Publish the Generated Image to Community
+              </span>
               <input
                 onChange={(e) => setIsPublished(e.target.checked)}
                 type="checkbox"
                 checked={isPublished}
                 className="scale-110"
               />
-              <span className="text-xs mt-1">Publish the Generated Image to Community</span>
             </label>
           </div>
         )}

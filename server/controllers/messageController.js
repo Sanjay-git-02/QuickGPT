@@ -54,14 +54,25 @@ export const textMessageController = async (req, res) => {
     } else if (openai) {
       // Fallback to a basic OpenAI completion if configured
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
       });
-      const messageText = completion?.choices?.[0]?.message?.content || 'No reply';
-      reply = { role: 'assistant', content: messageText, timestamp: Date.now(), isImage: false };
+      const messageText =
+        completion?.choices?.[0]?.message?.content || "No reply";
+      reply = {
+        role: "assistant",
+        content: messageText,
+        timestamp: Date.now(),
+        isImage: false,
+      };
     } else {
       // Last-resort fallback: echo the user's prompt
-      reply = { role: 'assistant', content: `Echo: ${prompt}`, timestamp: Date.now(), isImage: false };
+      reply = {
+        role: "assistant",
+        content: `Echo: ${prompt}`,
+        timestamp: Date.now(),
+        isImage: false,
+      };
     }
 
     chat.messages.push(reply);
@@ -79,7 +90,6 @@ export const textMessageController = async (req, res) => {
   }
 };
 
-
 export const imageMessageController = async (req, res) => {
   const userId = req.user._id;
   const { chatId, prompt, isPublished = false } = req.body;
@@ -92,7 +102,7 @@ export const imageMessageController = async (req, res) => {
     const user = await userModel.findOneAndUpdate(
       { _id: userId, credits: { $gte: 2 } },
       { $inc: { credits: -2 } },
-      { new: true }
+      { new: true },
     );
 
     if (!user) {
@@ -119,15 +129,15 @@ export const imageMessageController = async (req, res) => {
     let uploadResponse;
     try {
       const base64Image = await generateUnlimitedFreeImage(prompt);
-      if (!base64Image) throw new Error('All image providers failed');
+      if (!base64Image) throw new Error("All image providers failed");
 
       uploadResponse = await imagekit.upload({
         file: `data:image/png;base64,${base64Image}`,
         fileName: `img_${Date.now()}.png`,
-        folder: 'quickgpt',
+        folder: "quickgpt",
       });
     } catch (err) {
-      console.error('Image generation/upload failed:', err);
+      console.error("Image generation/upload failed:", err);
       throw err;
     }
 
@@ -143,14 +153,13 @@ export const imageMessageController = async (req, res) => {
     await chat.save();
 
     return res.json({ success: true, reply });
-
   } catch (error) {
     console.error("Image Error:", error);
 
     try {
       await userModel.updateOne({ _id: userId }, { $inc: { credits: 2 } });
     } catch (uErr) {
-      console.error('Failed to refund credits after image error:', uErr);
+      console.error("Failed to refund credits after image error:", uErr);
     }
 
     return res.json({
@@ -159,4 +168,3 @@ export const imageMessageController = async (req, res) => {
     });
   }
 };
-
