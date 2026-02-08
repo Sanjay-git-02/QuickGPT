@@ -51,7 +51,6 @@ export const getPlans = async (req, res) => {
   }
 };
 
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const purchasePlan = async (req, res) => {
@@ -59,7 +58,7 @@ export const purchasePlan = async (req, res) => {
     const { planId } = req.body;
     const userId = req.user._id;
 
-    const plan = plans.find(p => p._id === planId);
+    const plan = plans.find((p) => p._id === planId);
     if (!plan) {
       return res.json({ success: false, message: "Invalid Plan" });
     }
@@ -111,23 +110,44 @@ export const purchasePlan = async (req, res) => {
 export const completePurchase = async (req, res) => {
   try {
     const { session_id } = req.query;
-    if (!session_id) return res.status(400).json({ success: false, message: 'Missing session_id' });
+    if (!session_id)
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing session_id" });
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+    console.log('[completePurchase] session_id=', session_id);
+    if (!session)
+      return res
+    console.log('[completePurchase] stripe session metadata=', session.metadata);
+        .status(404)
+        .json({ success: false, message: "Session not found" });
 
     const { transactionId, appId } = session.metadata || {};
-    if (appId !== 'quickgpt') return res.json({ success: false, message: 'Invalid app' });
+    console.log('[completePurchase] found transaction=', !!transaction, transactionId);
+    if (appId !== "quickgpt")
+      return res.json({ success: false, message: "Invalid app" });
 
-    const transaction = await Transaction.findOne({ _id: transactionId, isPaid: false });
-    if (!transaction) return res.json({ success: false, message: 'Transaction not found or already processed' });
+    const transaction = await Transaction.findOne({
+    console.log('[completePurchase] credited user=', transaction.userId, 'credits=', transaction.credits);
+      _id: transactionId,
+      isPaid: false,
+    });
+    if (!transaction)
+      return res.json({
+        success: false,
+        message: "Transaction not found or already processed",
+      });
 
-    await userModel.updateOne({ _id: transaction.userId }, { $inc: { credits: transaction.credits } });
+    await userModel.updateOne(
+      { _id: transaction.userId },
+      { $inc: { credits: transaction.credits } },
+    );
     transaction.isPaid = true;
     await transaction.save();
 
-    return res.json({ success: true, message: 'Purchase completed' });
+    return res.json({ success: true, message: "Purchase completed" });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }
@@ -150,9 +170,16 @@ export const simulatePurchase = async (req, res) => {
       isPaid: true,
     });
 
-    await userModel.updateOne({ _id: userId }, { $inc: { credits: plan.credits } });
+    await userModel.updateOne(
+      { _id: userId },
+      { $inc: { credits: plan.credits } },
+    );
 
-    return res.json({ success: true, message: "Simulated purchase completed", transaction });
+    return res.json({
+      success: true,
+      message: "Simulated purchase completed",
+      transaction,
+    });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }
