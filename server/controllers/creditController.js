@@ -110,25 +110,54 @@ export const purchasePlan = async (req, res) => {
 export const completePurchase = async (req, res) => {
   try {
     const { session_id } = req.query;
-    if (!session_id) return res.status(400).json({ success: false, message: "Missing session_id" });
+    if (!session_id)
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing session_id" });
 
-    console.log('[completePurchase] session_id=', session_id);
+    console.log("[completePurchase] session_id=", session_id);
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    console.log('[completePurchase] stripe session metadata=', session?.metadata);
-    if (!session) return res.status(404).json({ success: false, message: "Session not found" });
+    console.log(
+      "[completePurchase] stripe session metadata=",
+      session?.metadata,
+    );
+    if (!session)
+      return res
+        .status(404)
+        .json({ success: false, message: "Session not found" });
 
     const { transactionId, appId } = session.metadata || {};
-    if (appId !== "quickgpt") return res.json({ success: false, message: "Invalid app" });
+    if (appId !== "quickgpt")
+      return res.json({ success: false, message: "Invalid app" });
 
-    const transaction = await Transaction.findOne({ _id: transactionId, isPaid: false });
-    console.log('[completePurchase] found transaction=', !!transaction, transactionId);
-    if (!transaction) return res.json({ success: false, message: "Transaction not found or already processed" });
+    const transaction = await Transaction.findOne({
+      _id: transactionId,
+      isPaid: false,
+    });
+    console.log(
+      "[completePurchase] found transaction=",
+      !!transaction,
+      transactionId,
+    );
+    if (!transaction)
+      return res.json({
+        success: false,
+        message: "Transaction not found or already processed",
+      });
 
-    await userModel.updateOne({ _id: transaction.userId }, { $inc: { credits: transaction.credits } });
+    await userModel.updateOne(
+      { _id: transaction.userId },
+      { $inc: { credits: transaction.credits } },
+    );
     transaction.isPaid = true;
     await transaction.save();
-    console.log('[completePurchase] credited user=', transaction.userId, 'credits=', transaction.credits);
+    console.log(
+      "[completePurchase] credited user=",
+      transaction.userId,
+      "credits=",
+      transaction.credits,
+    );
 
     return res.json({ success: true, message: "Purchase completed" });
   } catch (error) {

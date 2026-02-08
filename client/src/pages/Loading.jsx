@@ -14,7 +14,7 @@ const Loading = () => {
       if (session_id) {
         try {
           // Use the app axios instance so requests go to VITE_SERVER_URL and include auth
-          await axios.get('/api/credits/complete', { params: { session_id } });
+          await axios.get("/api/credits/complete", { params: { session_id } });
         } catch (e) {
           // ignore but still proceed to fetch user
         }

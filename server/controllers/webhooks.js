@@ -6,7 +6,10 @@ export const stripeWebHooks = async (request, response) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const sig = request.headers["stripe-signature"];
 
-  console.log('[webhooks] received request, signature=', sig ? 'present' : 'missing');
+  console.log(
+    "[webhooks] received request, signature=",
+    sig ? "present" : "missing",
+  );
 
   let event;
 
@@ -60,7 +63,10 @@ export const stripeWebHooks = async (request, response) => {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
-        console.log('[webhooks] payment_intent.succeeded id=', paymentIntent.id);
+        console.log(
+          "[webhooks] payment_intent.succeeded id=",
+          paymentIntent.id,
+        );
         const sessionList = await stripe.checkout.sessions.list({
           payment_intent: paymentIntent.id,
         });
@@ -79,7 +85,10 @@ export const stripeWebHooks = async (request, response) => {
 
       case "checkout.session.completed": {
         const session = event.data.object;
-        console.log('[webhooks] checkout.session.completed metadata=', session.metadata);
+        console.log(
+          "[webhooks] checkout.session.completed metadata=",
+          session.metadata,
+        );
         await processSession(session, response);
         break;
       }
