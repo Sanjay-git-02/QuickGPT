@@ -14,6 +14,7 @@ const Chatbox = () => {
   const [isPublished, setIsPublished] = useState(false);
 
   const containerRef = useRef(null);
+  const inputRef = useRef(null);
 
   const handlesubmit = async (e) => {
     try {
@@ -26,7 +27,7 @@ const Chatbox = () => {
         ...prev,
         {
           role: "user",
-          content: prompt,
+          content: promptCopy,
           timestamp: Date.now(),
           isImage: false,
         },
@@ -34,7 +35,7 @@ const Chatbox = () => {
 
       const { data } = await axios.post(`/api/message/${mode}`, {
         chatId: selectedChat._id,
-        prompt,
+        prompt: promptCopy,
         isPublished,
       });
 
@@ -52,6 +53,7 @@ const Chatbox = () => {
       toast.error(error.message);
     } finally {
       setPrompt("");
+      inputRef.current?.focus();
       setLoading(false);
     }
   };
@@ -101,15 +103,19 @@ const Chatbox = () => {
           </div>
         )}
 
+        {/* Publish checkbox centered above the prompt when in image mode */}
         {mode === "image" && (
-          <label className="inline-flex items-center gap-2 mb-3 text-sm mx-auto">
-            <p className="text-xs">Publish the Generated Image to Community</p>
-            <input
-              onChange={(e) => setIsPublished(e.target.checked)}
-              type="checkbox"
-              checked={isPublished}
-            />
-          </label>
+          <div className="w-full flex justify-center mb-3">
+            <label className="inline-flex flex-col items-center gap-2 text-sm">
+              <input
+                onChange={(e) => setIsPublished(e.target.checked)}
+                type="checkbox"
+                checked={isPublished}
+                className="scale-110"
+              />
+              <span className="text-xs mt-1">Publish the Generated Image to Community</span>
+            </label>
+          </div>
         )}
 
         {/*Prompt form */}
@@ -130,6 +136,8 @@ const Chatbox = () => {
           </select>
           <input
             onChange={(e) => setPrompt(e.target.value)}
+            ref={inputRef}
+            value={prompt}
             type="text"
             placeholder="Enter the Prompt..."
             className="flex-1 w-full text-sm outline-0"
