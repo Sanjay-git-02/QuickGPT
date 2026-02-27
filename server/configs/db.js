@@ -1,25 +1,32 @@
-import {MongoClient,ServerApiVersion} from 'mongodb'
-const uri = process.env.DB_URL;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
-});
+import mongoose from 'mongoose';
 
-async function run() {
+const connectDB = async () => {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+    const raw = process.env.DB_URL || 'mongodb://localhost:27017';
+    // If DB_URL already contains a DB name/path, use it as-is; otherwise append the default DB name
+    let uri = raw;
+    try {
+      const url = new URL(raw);
+      // if pathname is '/' or empty, append default DB name
+      if (!url.pathname || url.pathname === '/' ) {
+        uri = raw.replace(/\/*$/, '') + '/quickgpt';
+      }
+    } catch (e) {
+      // raw may be a mongodb connection string without protocol parsing - fallback to simple check
+      if (!raw.includes('/')) {
+        uri = raw + '/quickgpt';
+      }
+    }
+
+    await mongoose.connect(uri);
+    mongoose.connection.on('connected', () => console.log('Database Connected'));
+  } catch (error) {
+    console.error('DB connection error:', error.message);
+    throw error;
   }
-}
-run().catch(console.dir);
+};
+
+export default connectDB;
+
+
