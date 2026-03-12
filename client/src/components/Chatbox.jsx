@@ -76,7 +76,11 @@ const Chatbox = () => {
   }, [messages]);
 
   return (
-  <div className="flex-1 flex flex-col justify-center m-5 md:m-10 xl:mx-30 max-md:mt-14 2xl:pr-40">
+<div
+  className={`flex-1 flex flex-col m-5 md:m-10 xl:mx-30 max-md:mt-14 2xl:pr-40 ${
+    messages.length === 0 ? "justify-center" : "justify-between"
+  }`}
+>
 
     {/* Messages Container */}
     <div ref={containerRef} className="flex-1 mb-5 overflow-y-scroll">
