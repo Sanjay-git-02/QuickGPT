@@ -27,7 +27,7 @@ export const textMessageController = async (req, res) => {
 
     if (gemini) {
       const response = await gemini.chat.completions.create({
-        model: "gemini-3-flash-preview",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -39,7 +39,7 @@ export const textMessageController = async (req, res) => {
       };
     } else if (openai) {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gemini-3-flash-preview",
         messages: [{ role: "user", content: prompt }],
       });
 
